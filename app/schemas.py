@@ -20,6 +20,16 @@ class UserLogin(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordVerify(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+
 class ForgotPassword(BaseModel):
     email: EmailStr
     new_password: str

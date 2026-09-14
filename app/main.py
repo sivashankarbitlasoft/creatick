@@ -1,8 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine, ensure_database_exists
 from app.routers import auth, users, tickets
+
+
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.requests import Request
+import logging
+from sqlalchemy.exc import IntegrityError
 
 # Ensure the database exists before creating tables.
 ensure_database_exists()
@@ -19,15 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Add centralized exception handlers so all endpoints return consistent JSON for
-# validation, DB integrity, and unexpected errors. Do not change existing
-# endpoint behavior for HTTPException which FastAPI already handles.
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from starlette.requests import Request
-import logging
-from sqlalchemy.exc import IntegrityError
 
 
 @app.exception_handler(RequestValidationError)
@@ -60,3 +58,26 @@ app.include_router(tickets.router)
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Ticket System API is running"}
+
+@app.exception_handler(RequestValidationError)
+async def validation_handler(request: Request, exc: RequestValidationError):
+    first = exc.errors()[0]
+    field = ".".join(str(x) for x in first["loc"] if x != "body")
+    return JSONResponse(status_code=422, content={
+        "code": 422,
+        "message": f"{field}: {first['msg']}"
+    })
+
+@app.exception_handler(IntegrityError)
+async def integrity_handler(request: Request, exc: IntegrityError):
+    return JSONResponse(status_code=409, content={
+        "code": 409,
+        "message": "A ticket with this sub-domain and app type already exists."
+    })
+
+@app.exception_handler(Exception)
+async def unhandled_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={
+        "code": 500,
+        "message": "Something went wrong while processing your request."
+    })

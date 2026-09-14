@@ -42,6 +42,15 @@ class User(Base):
     tickets = relationship("Ticket", back_populates="creator")
 
 
+class PasswordOTP(Base):
+    __tablename__ = "password_otps"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(150), nullable=False, index=True)
+    otp_code = Column(String(10), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Ticket(Base):
     __tablename__ = "tickets"
     __table_args__ = (

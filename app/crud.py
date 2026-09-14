@@ -1,7 +1,11 @@
+import os
+import random
+import smtplib
+from email.message import EmailMessage
 from typing import List, Optional
 
-from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 
 from app import models, schemas
 
@@ -14,6 +18,36 @@ def hash_password(plain_password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+
+def generate_otp_code() -> str:
+    return str(random.randint(100000, 999999))
+
+
+def send_password_reset_otp_email(email: str, otp_code: str) -> None:
+    smtp_host = os.getenv("SMTP_HOST","smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USERNAME","sivashankarchandrappa@gmail.com")
+    smtp_password = os.getenv("SMTP_PASSWORD","ondydcprbzubwmor")
+    smtp_from = os.getenv("SMTP_FROM", "sivashankarchandrappa@gmail.com")
+    use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+
+    if not smtp_host or not smtp_user or not smtp_password:
+        raise RuntimeError("SMTP settings are missing. Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, and SMTP_FROM in the environment.")
+
+    message = EmailMessage()
+    message["Subject"] = "Your password reset OTP"
+    message["From"] = smtp_from
+    message["To"] = email
+    message.set_content(
+        f"Your password reset OTP is: {otp_code}\n\nThis code is valid for a short time.\n"
+    )
+
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        if use_tls:
+            server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(message)
 
 
 # ---------- USER ----------
@@ -45,6 +79,47 @@ def reset_password_by_email(db: Session, email: str, new_password: str) -> Optio
     if not user:
         return None
     user.password = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def save_password_otp(db: Session, email: str, otp_code: str) -> models.PasswordOTP:
+    existing_rows = db.query(models.PasswordOTP).filter(models.PasswordOTP.email == email).all()
+    for row in existing_rows:
+        db.delete(row)
+
+    otp_record = models.PasswordOTP(email=email, otp_code=otp_code)
+    db.add(otp_record)
+    db.commit()
+    db.refresh(otp_record)
+    return otp_record
+
+
+def verify_password_otp(db: Session, email: str, otp_code: str) -> bool:
+    record = db.query(models.PasswordOTP).filter(
+        models.PasswordOTP.email == email,
+        models.PasswordOTP.otp_code == otp_code,
+    ).first()
+    return record is not None
+
+
+def reset_password_with_otp(db: Session, email: str, otp_code: str, new_password: str) -> Optional[models.User]:
+    otp_record = db.query(models.PasswordOTP).filter(
+        models.PasswordOTP.email == email,
+        models.PasswordOTP.otp_code == otp_code,
+    ).first()
+    if not otp_record:
+        return None
+
+    user = get_user_by_email(db, email)
+    if not user:
+        db.delete(otp_record)
+        db.commit()
+        return None
+
+    user.password = hash_password(new_password)
+    db.delete(otp_record)
     db.commit()
     db.refresh(user)
     return user

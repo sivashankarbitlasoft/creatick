@@ -37,6 +37,8 @@
 |--------|-------------------------------|-------------------------------------------------------|
 | POST   | /auth/register                | Sign up a new BA                                       |
 | POST   | /auth/login                   | Login (no token — returns user object to store locally)|
+| POST   | /auth/forgot-password         | Send a 6-digit OTP to the registered email address    |
+| POST   | /auth/forgot-password/verify  | Verify OTP and reset the user password                 |
 | GET    | /users/{id}                   | View profile                                           |
 | PUT    | /users/{id}                   | Update profile                                         |
 | POST   | /tickets                      | Create ticket(s). app_type="both" creates 2 tickets    |
