@@ -1,0 +1,17 @@
+# Python virtual environments
+.venv/
+.venv-1/
+venv/
+venv-1/
+**/.venv/
+**/.venv-1/
+**/venv/
+**/venv-1/
+
+# Python packaging cache
+.pycache/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc

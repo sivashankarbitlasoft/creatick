@@ -62,3 +62,11 @@ def update_status(ticket_number: str, data: schemas.TicketStatusUpdate, db: Sess
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
+
+@router.delete("/{ticket_number}", status_code=204)
+def delete_ticket(ticket_number: str, db: Session = Depends(get_db)):
+    """Deletes a ticket. Used by the dashboard card's 3-dot 'Delete ticket' menu item."""
+    deleted = crud.delete_ticket(db, ticket_number)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return None

@@ -161,3 +161,12 @@ def update_ticket_status(db: Session, ticket_number: str, status: models.TicketS
     db.commit()
     db.refresh(ticket)
     return ticket
+
+def delete_ticket(db: Session, ticket_number: str) -> bool:
+    """Deletes a ticket by its ticket_number. Returns True if a row was deleted."""
+    ticket = get_ticket_by_number(db, ticket_number)
+    if not ticket:
+        return False
+    db.delete(ticket)
+    db.commit()
+    return True
